@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict'
+import {deadlineStatus} from '../lib/cms'
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:3000'
+let passed=0
+async function check(name:string,fn:()=>Promise<void>){await fn();passed++;console.log('PASS',name)}
+async function get(path:string,status=200,method='GET'){const r=await fetch(base+path,{method});assert.equal(r.status,status,path);return r.json()}
+async function list(path:string){const r=await get('/api/v1/'+path);assert.equal(r.success,true);assert.ok(r.meta);return r}
+const hidden=['sample-draft-news','sample-future-news','sample-archived-news','sample-draft-event','sample-future-event','sample-expired-notice','sample-private-students','sample-private-faculty','sample-private-staff','sample-draft-notice','sample-inactive-scholarship','sample-draft-scholarship']
+async function main(){
+for(const kind of ['news','events','announcements','scholarships'])await check(kind+' public visibility',async()=>{const r=await list(kind+'?pageSize=100');assert.ok(r.data.length>0);const str=JSON.stringify(r);for(const slug of hidden)assert.equal(str.includes(slug),false);for(const row of r.data){const i=row.item??row;assert.equal(i.status,'published');assert.ok(new Date(i.publishedAt)<=new Date());if(kind==='news')assert.equal('authorId' in i,false)}})
+for(const [kind,slugs] of [['news',hidden.slice(0,3)],['events',hidden.slice(3,5)],['announcements',hidden.slice(5,10)],['scholarships',hidden.slice(10)]] as [string,string[]][])for(const slug of slugs)await check('hidden detail '+slug,async()=>{await get('/api/v1/'+kind+'/'+slug,404)})
+await check('news pagination and category',async()=>{const a=await list('news?pageSize=1');const b=await list('news?pageSize=1&page=2');assert.notEqual(a.data[0].item.slug,b.data[0].item.slug);assert.equal(a.meta.total,b.meta.total);const c=await list('news?category=learning');assert.ok(c.data.length);assert.ok(c.data.every((x:{categorySlug:string})=>x.categorySlug==='learning'))})
+await check('news featured and date filters',async()=>{const r=await list('news?featured=true');assert.ok(r.data.length);assert.ok(r.data.every((x:{item:{featured:boolean}})=>x.item.featured));assert.equal((await list('news?from=2098-01-01')).meta.total,0)})
+await check('event upcoming/past filters',async()=>{for(const period of ['upcoming','past']){const r=await list('events?period='+period);for(const {item} of r.data)assert.equal(new Date(item.endsAt)>=new Date(),period==='upcoming')}})
+await check('requirements degree, program, applicant filters',async()=>{const r=await list('admissions/requirements?degreeLevel=undergraduate&program=bs-computer-science&applicantType=international');assert.ok(r.data.length);assert.ok(r.data.every((x:{item:{degreeLevel:string|null;applicantType:string}})=>(!x.item.degreeLevel||x.item.degreeLevel==='undergraduate')&&['all','international'].includes(x.item.applicantType)))})
+await check('deadlines actual date status',async()=>{const r=await list('admissions/deadlines');for(const x of r.data)assert.equal(x.applicationStatus,deadlineStatus(x.item.opensOn,x.item.deadline));for(const s of ['open','upcoming','closed']){const x=await list('admissions/deadlines?status='+s);assert.ok(x.data.every((row:{applicationStatus:string})=>row.applicationStatus===s))}})
+await check('fees missing amounts stay null',async()=>{const r=await list('admissions/fees');const s=r.data.find((x:{item:{slug:string}})=>x.item.slug==='sample-fee-publication-pending');assert.ok(s);assert.equal(s.item.tuition,null);assert.equal(s.item.registrationFee,null)})
+await check('scholarship filtering',async()=>{const r=await list('scholarships?degreeLevel=undergraduate');assert.ok(r.data.every((x:{degreeLevel:string|null})=>!x.degreeLevel||x.degreeLevel==='undergraduate'))})
+await check('news related visibility',async()=>{const r=await get('/api/v1/news/sample-learning-together');assert.ok(r.data.related);for(const slug of hidden)assert.equal(JSON.stringify(r).includes(slug),false)})
+for(const q of ['page=0','pageSize=101','period=invalid','from=2026-10-01&to=2026-01-01'])await check('invalid filters '+q,async()=>{await get('/api/v1/news?'+q,400)})
+for(const kind of ['news','events','announcements','scholarships'])await check(kind+' invalid/missing slug',async()=>{await get('/api/v1/'+kind+'/Bad_Slug',404);await get('/api/v1/'+kind+'/missing-item',404)})
+await check('university search CMS visibility and scopes',async()=>{for(const category of ['news','events']){const r=await list('search?category='+category);assert.ok(r.data.length);assert.ok(r.data.every((x:{category:string})=>x.category===category));for(const slug of hidden)assert.equal(JSON.stringify(r).includes(slug),false);const s=await list('search?category='+category+'&degreeLevel=graduate');assert.equal(s.meta.total,0)}assert.equal((await list('search?search=Hidden')).meta.total,0)})
+await check('sitemap contains published and excludes hidden content',async()=>{const r=await fetch(base+'/sitemap.xml');assert.equal(r.status,200);const s=await r.text();assert.ok(s.includes('/news/sample-learning-together'));assert.ok(s.includes('/events/sample-study-discovery-session'));for(const slug of hidden)assert.equal(s.includes(slug),false)})
+for(const kind of ['news','events','announcements','scholarships'])for(const method of ['GET','POST'])await check('management denied '+kind+' '+method,async()=>{const r=await get('/api/v1/manage/'+kind,401,method);assert.equal(r.error.code,'AUTHENTICATION_REQUIRED')})
+for(const method of ['GET','PUT','DELETE'])await check('management detail denied '+method,async()=>{await get('/api/v1/manage/news/f47ac10b-58cc-4372-a567-0e02b2c3d479',401,method)})
+for(const [path,method] of [['applications','GET'],['applications','POST'],['applications/unknown','GET'],['applications/unknown','PATCH'],['applications/unknown/documents','POST'],['applications/unknown/status','POST']])await check('private '+path+' '+method,async()=>{await get('/api/v1/'+path,401,method)})
+await check('public write methods unavailable',async()=>{await get('/api/v1/news',405,'POST').catch(e=>{if(e instanceof SyntaxError)return;throw e})})
+console.log(`CMS integration: ${passed} checks passed.`)
+
+}
+main().catch(e=>{console.error(e);process.exitCode=1})

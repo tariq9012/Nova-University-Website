@@ -1,0 +1,3 @@
+import Link from 'next/link'
+export function PublicHero({title,description,section='Nova University'}:{title:string;description:string;section?:string}) {return <section className="page-hero"><div className="shell"><p className="eyebrow">{section}</p><h1>{title}</h1><p>{description}</p></div></section>}
+export function DestinationLinks({items}:{items:[string,string,string][]}) {return <div className="destination-grid">{items.map(([title,href,description])=><Link className="destination" key={href} href={href}><h3>{title} <span aria-hidden="true">↗</span></h3><p>{description}</p></Link>)}</div>}

@@ -1,0 +1,25 @@
+import Link from 'next/link'
+import {academicFilters,filterInput,queryFilters,type SearchParams} from '@/lib/academic-filters'
+import {getPrograms,getCourses,getFaculty,getDepartments,listSchools,getCalendar,getFilterOptions,searchAcademics} from '@/db/queries/academics'
+import {AcademicFrame,AcademicFiltersForm,Pagination,Empty,Unavailable,FacultyPhoto} from './academic-ui'
+const titles={programs:'Program finder',courses:'Course catalog',schools:'Schools & faculties',departments:'Departments',faculty:'Faculty directory',calendar:'Academic calendar',search:'Search Nova'}
+export async function AcademicListing({kind,params}:{kind:keyof typeof titles;params:SearchParams}){
+ const path=kind==='faculty'?'/faculty':kind==='search'?'/search':`/academics/${kind}`
+ const parsed=academicFilters.safeParse(filterInput(params))
+ if(!parsed.success)return <AcademicFrame title={titles[kind]}><div role="alert"><h2>Check your filters</h2><p>{parsed.error.issues[0]?.message}</p><Link prefetch={false} href={path}>Reset filters</Link></div></AcademicFrame>
+ const filters=parsed.data;const f=queryFilters(filters)
+ const load=()=>Promise.all([getFilterOptions(),kind==='programs'?getPrograms(f):null,kind==='courses'?getCourses(f):null,kind==='faculty'?getFaculty(f):null,kind==='schools'?listSchools(f):null,kind==='departments'?getDepartments(f):null,kind==='calendar'?getCalendar(f):null,kind==='search'?searchAcademics(f):null] as const)
+ let loaded:Awaited<ReturnType<typeof load>>
+ try{loaded=await load()}catch{return <AcademicFrame title={titles[kind]}><Unavailable/></AcademicFrame>}
+ const [options,programResult,courseResult,facultyResult,schoolResult,departmentResult,calendarResult,searchResult]=loaded
+ let total=0;let content:React.ReactNode;let count=0
+ if(kind==='programs'){const r=programResult!;total=r.total;count=r.data.length;content=r.data.map(p=><article className="academic-result" key={p.slug}><p className="eyebrow">{p.degreeLevel} · {p.durationYears} years · {p.studyMode.replaceAll('_',' ')}</p><h2><Link prefetch={false} href={`/academics/programs/${p.slug}`}>{p.name} →</Link></h2><p>{p.school} · {p.department}</p><p>{p.totalCreditHours} credits</p><Link prefetch={false} className="text-link" href={`/academics/compare?program=${p.slug}`}>Compare this program</Link></article>)}
+ else if(kind==='courses'){const r=courseResult!;total=r.total;count=r.data.length;content=r.data.map(c=><article className="academic-result" key={c.slug}><p className="eyebrow">{c.code} · Level {c.courseLevel} · {c.creditHours} credits</p><h2><Link prefetch={false} href={`/academics/courses/${c.slug}`}>{c.title} →</Link></h2><p>{c.department} · {c.courseType.replaceAll('_',' ')}</p></article>)}
+ else if(kind==='faculty'){const r=facultyResult!;total=r.total;count=r.data.length;content=<div className="faculty-grid">{r.data.map(p=><article className="academic-result faculty-result" key={p.slug}><FacultyPhoto url={p.imageUrl} name={`${p.firstName} ${p.lastName}`}/><div><p className="eyebrow">{p.school}</p><h2><Link prefetch={false} href={`/faculty/${p.slug}`}>{p.title} {p.firstName} {p.lastName}</Link></h2><p>{p.position}</p><p>{p.department}</p></div></article>)}</div>}
+ else if(kind==='schools'){const r=schoolResult!;total=r.total;count=r.data.length;content=r.data.map(s=><article className="academic-result" key={s.slug}><h2><Link prefetch={false} href={`/academics/schools/${s.slug}`}>{s.name} →</Link></h2><p>{s.description}</p></article>)}
+ else if(kind==='departments'){const r=departmentResult!;total=r.total;count=r.data.length;content=r.data.map(d=><article className="academic-result" key={d.slug}><p className="eyebrow">{d.school}</p><h2><Link prefetch={false} href={`/academics/departments/${d.slug}`}>{d.name} →</Link></h2><p>{d.description}</p></article>)}
+ else if(kind==='calendar'){const r=calendarResult!;total=r.total;count=r.data.length;content=r.data.map(e=><article className="academic-result calendar-result" key={e.id}><div><time dateTime={e.startDate}>{e.startDate}</time>{e.endDate&&<> – <time dateTime={e.endDate}>{e.endDate}</time></>}</div><div><p className="eyebrow">{e.eventType.replaceAll('_',' ')} · {e.semesterLabel}</p><h2>{e.title}</h2>{e.description&&<p>{e.description}</p>}</div></article>)}
+ else{const r=searchResult!;total=r.total;count=r.data.length;content=r.data.map(x=><article className="academic-result" key={x.href}><p className="eyebrow">{x.category}</p><h2><Link prefetch={false} href={x.href}>{x.title} →</Link></h2></article>)}
+ return <AcademicFrame title={titles[kind]} description={kind==='search'?'Search programs, courses, schools, departments and faculty.':'Discover academic opportunities and plan your next steps.'}><AcademicFiltersForm kind={kind} filters={filters} options={options} path={path}/><p role="status" className="result-count">{total} {kind==='search'?'results':kind==='calendar'?'events':kind} found</p>{count?content:<Empty>No {kind==='search'?'results':kind==='calendar'?'events':kind} match your filters. Try clearing a filter or choosing a broader term.</Empty>}<Pagination filters={filters} total={total} path={path}/></AcademicFrame>
+
+}

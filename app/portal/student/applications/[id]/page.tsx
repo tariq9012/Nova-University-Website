@@ -1,0 +1,10 @@
+import {notFound} from 'next/navigation'
+import {z} from 'zod'
+import Link from 'next/link'
+import {portalAuth} from '@/lib/server/portal-auth'
+import {getApplication} from '@/db/queries/applications'
+import {NotFoundError} from '@/lib/server/api'
+import {ApplicationForm,type ApplicationView} from '@/components/application-form'
+import {Facts} from '@/components/academic-ui'
+import {Sample,dateLabel} from '@/components/cms-ui'
+export default async function Page({params}:{params:Promise<{id:string}>}){const u=await portalAuth('student');const {id}=await params;if(!z.uuid().safeParse(id).success)notFound();let a;try{a=await getApplication(id)}catch(e){if(e instanceof NotFoundError)notFound();throw e}return <><Link prefetch={false} href="/portal/student/applications">← Your applications</Link><h1>{String(a.program)}</h1><Sample show={!!a.isSample}/><Facts items={[["Application ID",id],["Intake",String(a.intake)],["Status",String(a.status).replaceAll('_',' ')],["Submitted",a.submittedAt?dateLabel(String(a.submittedAt),true):'Not submitted']]}/><ApplicationForm application={{id,status:String(a.status),priorEducation:a.priorEducation as string|null,personalStatement:a.personalStatement as string|null,contactPhone:a.contactPhone as string|null,applicantType:String(a.applicantType)} as ApplicationView} verified={!!u.emailVerifiedAt}/><h2>Required information</h2><p>Provide prior education, a personal statement and a contact phone number. Review the published requirements below before submitting.</p>{a.requirements.length?a.requirements.map((r,i)=><article key={i} className="student-record"><h3>{r.title}</h3>{r.isSample&&<p>Sample requirement</p>}<p>{r.description}</p><ul>{r.documents.map(d=><li key={d}>{d}</li>)}</ul></article>):<p>No additional program requirements are published.</p>}<p>Private document upload is not yet configured. Contact admissions about required document delivery.</p><h2>Status history</h2><ol className="application-history">{a.history.map((h,i)=><li key={i}>{String(h.toStatus).replaceAll('_',' ')} · {dateLabel(String(h.createdAt),true)}</li>)}</ol></>}

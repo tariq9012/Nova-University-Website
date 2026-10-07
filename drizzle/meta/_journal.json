@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789810855788,
+      "tag": "0000_boring_microchip",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789810887220,
+      "tag": "0001_thankful_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789993440000,
+      "tag": "0002_worried_bulldozer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789994287533,
+      "tag": "0003_brown_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790017823036,
+      "tag": "0004_solid_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790072724899,
+      "tag": "0005_perpetual_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790081052966,
+      "tag": "0006_phase4_public_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790528455754,
+      "tag": "0007_puzzling_lake",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790599302348,
+      "tag": "0008_powerful_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790700000000,
+      "tag": "0009_phase7_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790786400000,
+      "tag": "0010_phase71_invoice_draft",
+      "breakpoints": true
+    }
+  ]
+}

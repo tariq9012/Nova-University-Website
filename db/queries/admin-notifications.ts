@@ -1,0 +1,14 @@
+import {sql} from 'drizzle-orm'
+import {db} from '@/db'
+import {z} from 'zod'
+import {AppError,parseParams} from '@/lib/server/api'
+import {requireAdminPermission} from '@/lib/server/admin-auth'
+export const notificationBody=z.object({audience:z.enum(['user','students','faculty','applicants','everyone']),email:z.preprocess(v=>v===''?undefined:v,z.email().max(320).optional()),title:z.string().trim().min(3).max(160),message:z.string().trim().min(3).max(2000),link:z.preprocess(v=>v===''?undefined:v,z.string().max(300).regex(/^\/(?!\/)[A-Za-z0-9\-._~\/?=&%#]*$/,'Link must be a site-relative path').optional()),batchId:z.uuid()}).strict()
+const roleOf={students:'student',faculty:'faculty',applicants:'applicant'} as const
+/** Recipients are resolved on the server (active accounts only). dedupe_key = batch+user makes resubmission a no-op, so no duplicates. */
+export async function sendNotification(input:unknown){const actor=await requireAdminPermission('cms.manage');const b=parseParams(notificationBody,input)
+ if(b.audience==='user'&&!b.email)throw new AppError('VALIDATION_ERROR','Enter the recipient email address.',400)
+ const recipients=b.audience==='user'?sql`select id from users where lower(email)=lower(${b.email??''}) and status='active'`:b.audience==='everyone'?sql`select id from users where status='active'`:sql`select distinct u.id from users u join user_roles ur on ur.user_id=u.id join roles r on r.id=ur.role_id where u.status='active' and r.name=${roleOf[b.audience]}`
+ const r=await db.execute(sql`with recipients as (${recipients}), sent as (insert into user_notifications(user_id,title,message,category,link,dedupe_key) select id,${b.title},${b.message},'announcement',${b.link??null},'admin:'||${b.batchId}||':'||id::text from recipients on conflict(dedupe_key) do nothing returning id), logged as (insert into audit_logs(actor_user_id,action,entity_type,entity_id,metadata) select ${actor.id}::uuid,'admin.notification_sent','notification',${b.batchId},jsonb_build_object('audience',${b.audience}::text,'recipients',(select count(*) from sent),'title',${b.title}::text) where exists(select 1 from sent)) select (select count(*)::int from recipients) as matched,(select count(*)::int from sent) as sent`)
+ const row=r.rows[0] as {matched:number;sent:number};if(!row.matched)throw new AppError('NOT_FOUND','No active recipients match this audience.',404);return {matched:Number(row.matched),sent:Number(row.sent),duplicatesSkipped:Number(row.matched)-Number(row.sent)}}
+export async function recentAdminNotifications(){await requireAdminPermission('cms.view');return (await db.execute(sql`select min(n.id::text) as id,n.title,count(*)::int as recipients,max(n.created_at) as "createdAt" from user_notifications n where n.dedupe_key like 'admin:%' group by split_part(n.dedupe_key,':',2),n.title order by max(n.created_at) desc limit 20`)).rows as Record<string,unknown>[]}

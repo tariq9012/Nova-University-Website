@@ -1,0 +1,4 @@
+import type {Permission} from '../permissions'
+/** Maps each operation to the permission the ROUTE requires before the query layer re-checks it. */
+export const opsWithoutId={'enroll':'academics.manage','attendance-correction':'academics.manage','exam-create':'academics.manage','assignment-create':'academics.manage','session-create':'academics.manage','instructor-assign':'faculty.manage','invoice-create':'finance.manage'} as const satisfies Record<string,Permission>
+export const opsWithId={'enrollment-withdraw':'academics.manage','exam-update':'academics.manage','exam-state':'academics.manage','assignment-update':'academics.manage','assignment-state':'academics.manage','session-update':'academics.manage','session-state':'academics.manage','student-profile':'students.manage','faculty-profile':'faculty.manage','invoice-update':'finance.manage','invoice-action':'finance.manage'} as const satisfies Record<string,Permission>

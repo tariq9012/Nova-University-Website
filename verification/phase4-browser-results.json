@@ -1,0 +1,22 @@
+{
+  "academic": {
+    "routes": 16,
+    "responsiveChecks": 128,
+    "issues": [],
+    "errors": []
+  },
+  "admissions_cms": {
+    "routes": 18,
+    "responsiveChecks": 144,
+    "issues": [],
+    "errors": []
+  },
+  "authentication_portals": {
+    "routes": 20,
+    "responsiveChecks": 160,
+    "issues": [],
+    "errors": [],
+    "completed": true,
+    "recoveryFeedbackRetest": "PASS with unique unknown email"
+  }
+}

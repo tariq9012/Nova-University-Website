@@ -1,0 +1,5 @@
+import Link from 'next/link'
+import {getNews,getEvents,getAnnouncements} from '@/db/queries/cms'
+import {cmsFilters} from '@/lib/cms'
+import {Sample,dateLabel} from './cms-ui'
+export async function CmsHighlights(){let n,e,a;try{[n,e,a]=await Promise.all([getNews(cmsFilters.parse({pageSize:2})),getEvents(cmsFilters.parse({pageSize:2,period:'upcoming'})),getAnnouncements(cmsFilters.parse({pageSize:2}))])}catch{return <p role="status">University updates are temporarily unavailable.</p>}return <div className="cms-highlights">{[["News",'/news',n],["Events",'/events',e],["Announcements",'/announcements',a]].map(([title,path,result])=><section key={String(path)}><h3><Link prefetch={false} href={String(path)}>{String(title)} →</Link></h3>{typeof result==='object'&&result.data.length?result.data.map(r=><article key={r.item.id}><p className="cms-meta">{dateLabel(r.item.publishedAt)}</p><h4><Link prefetch={false} href={path+'/'+r.item.slug}>{r.item.title}</Link></h4><Sample show={r.item.isSample}/></article>):<p>No updates published yet.</p>}</section>)}</div>}

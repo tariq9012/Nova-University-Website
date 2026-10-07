@@ -1,0 +1,4 @@
+import {getProgramBySlug} from '@/db/queries/academics'
+import {summarizeCurriculum} from '@/lib/curriculum'
+import {json,NotFoundError,parseParams,slugSchema,withApi} from '@/lib/server/api'
+export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){return withApi(async()=>{const slug=parseParams(slugSchema,(await params).slug);const data=await getProgramBySlug(slug);if(!data)throw new NotFoundError('Program not found');return json({success:true,data:{program:{name:data.program.name,slug:data.program.slug,totalCreditHours:data.program.totalCreditHours},...summarizeCurriculum(data.curriculum)}})})()}

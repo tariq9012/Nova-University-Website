@@ -1,0 +1,7 @@
+import Link from 'next/link'
+import {portalAuth} from '@/lib/server/portal-auth'
+import {listApplications} from '@/db/queries/applications'
+import {paginationSchema} from '@/lib/server/api'
+import type {SearchParams} from '@/lib/academic-filters'
+import {dateLabel} from '@/components/cms-ui'
+export default async function Page({searchParams}:{searchParams:Promise<SearchParams>}){await portalAuth('student');const parsed=paginationSchema.safeParse(await searchParams);if(!parsed.success)return <p role="alert">Invalid pagination.</p>;const p=parsed.data;const r=await listApplications(p.page,p.pageSize);return <><h1>Your applications</h1><Link prefetch={false} className="button dark" href="/portal/student/applications/new">Start an application →</Link>{!r.data.length&&<p className="academic-empty">You have not started an application yet.</p>}{r.data.map(a=><article className="cms-record" key={String(a.id)}><p className="cms-meta">{String(a.status).replaceAll('_',' ')}</p><h2><Link prefetch={false} href={'/portal/student/applications/'+a.id}>{String(a.program)}</Link></h2><p>{String(a.intake)}</p><p>Application ID: {String(a.id)}</p><p>Submitted: {a.submittedAt?dateLabel(String(a.submittedAt),true):'Not submitted'}</p></article>)}<nav className="academic-pagination" aria-label="Application pagination">{p.page>1&&<Link href={'?page='+(p.page-1)}>Previous</Link>}<span>Page {p.page} · {r.total} applications</span>{p.page*p.pageSize<r.total&&<Link href={'?page='+(p.page+1)}>Next</Link>}</nav></>}

@@ -1,0 +1,18 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {academicTotals,attendanceTotals,invoiceState,type Attempt} from '../lib/student-academics'
+import {fileInput,preferencesInput,submissionInput,studentQuery} from '../lib/student-validation'
+const attempt=(p:Partial<Attempt>={}):Attempt=>({id:'1',courseId:'course',semesterId:'term1',endsOn:'2026-06-30',credits:3,status:'completed',grade:'B',points:3,countsForGpa:true,earnsCredit:true,policyId:'policy',...p})
+const policy={id:'policy',repeatPolicy:'latest' as const}
+test('GPA weights credits and applies latest repeat; credits earned only once',()=>{const a=academicTotals([attempt(),attempt({id:'2',semesterId:'term2',endsOn:'2026-12-31',points:4}),attempt({id:'3',courseId:'other',credits:1,points:2})],policy);assert.equal(a.completedCredits,4);assert.equal(a.cgpa,3.5);assert.equal(a.semesterGpa.term1,2.75)})
+test('best and all repeat policies are explicit',()=>{const rows=[attempt({points:4}),attempt({id:'2',endsOn:'2026-12-31',points:2})];assert.equal(academicTotals(rows,{...policy,repeatPolicy:'best'}).cgpa,4);assert.equal(academicTotals(rows,{...policy,repeatPolicy:'all'}).cgpa,3)})
+test('no grading policy means no GPA, not zero',()=>assert.equal(academicTotals([attempt()],null).cgpa,null))
+test('withdrawn, zero-credit, incomplete, unassigned policy excluded',()=>{const a=academicTotals([attempt({status:'withdrawn'}),attempt({credits:0}),attempt({countsForGpa:false,earnsCredit:false,points:null}),attempt({policyId:'other',earnsCredit:false})],policy);assert.equal(a.cgpa,null);assert.equal(a.completedCredits,0)})
+test('F counts in GPA but awards no credit',()=>{const a=academicTotals([attempt({points:0,earnsCredit:false,grade:'F'})],policy);assert.equal(a.cgpa,0);assert.equal(a.completedCredits,0)})
+test('attendance excludes excused from denominator and handles no marks',()=>{assert.deepEqual(attendanceTotals([{status:'present'},{status:'absent'},{status:'excused'}]),{present:1,absent:1,excused:1,total:3,percentage:50});assert.equal(attendanceTotals([]).percentage,null)})
+test('fees use minor units and date-aware status',()=>{assert.deepEqual(invoiceState(1000,300,'2026-10-01','2026-09-27'),{due:700,status:'Partially paid'});assert.equal(invoiceState(1000,0,'2026-09-01','2026-09-27').status,'Overdue');assert.equal(invoiceState(1000,1000,'2026-09-01','2026-09-27').status,'Paid')})
+test('files reject traversal, executables, spoofed extension, empty and oversized files',()=>{for(const value of [{filename:'../secret.pdf',mimeType:'application/pdf',size:1},{filename:'run.exe',mimeType:'application/pdf',size:1},{filename:'x.pdf',mimeType:'application/pdf',size:10485761},{filename:'x.pdf',mimeType:'application/pdf',size:0}])assert.equal(fileInput.safeParse(value).success,false);assert.ok(fileInput.safeParse({filename:'essay.pdf',mimeType:'application/pdf',size:100}).success)})
+test('strict mutation/query schemas reject client identity and grades',()=>{assert.equal(submissionInput.safeParse({content:'answer',studentId:'foreign'}).success,false);assert.equal(studentQuery.safeParse({studentId:'foreign'}).success,false);assert.equal(preferencesInput.safeParse({timezone:'UTC',emailNotifications:true,compactTables:false,grade:'A'}).success,false)})
+test('preferences validate real time zones',()=>assert.equal(preferencesInput.safeParse({timezone:'Nowhere/Unknown',emailNotifications:false,compactTables:false}).success,false))
+
+test('week filters reject impossible calendar dates',()=>{assert.equal(studentQuery.safeParse({week:'2026-02-31'}).success,false);assert.equal(studentQuery.safeParse({week:'0000-01-01'}).success,false);assert.equal(studentQuery.safeParse({week:'2028-02-29'}).success,true)})

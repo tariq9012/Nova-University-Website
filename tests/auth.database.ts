@@ -1,0 +1,8 @@
+import 'dotenv/config'
+import assert from 'node:assert/strict'
+import {sql} from 'drizzle-orm'
+import {db} from '../db'
+import {seedAuth} from '../db/seed-auth'
+import {readMigrationFiles} from 'drizzle-orm/migrator'
+async function main(){const snapshot=async()=>{const r=await db.execute(sql`select md5(coalesce(string_agg(row_to_json(u)::text,'|' order by id),'')) as hash from users u`);return r.rows[0].hash};const before=await snapshot();await seedAuth();assert.equal(await snapshot(),before,'Seed must not overwrite existing user rows');const r=await db.execute(sql`select (select count(*)::int from drizzle.__drizzle_migrations) as migrations,(select count(*)::int from users where is_development) as development_users,(select count(*)::int from faculty_profiles f join users u on u.id=f.user_id where u.email='faculty.dev@nova.example') as linked_faculty,(select count(*)::int from student_profiles sp join users u on u.id=sp.user_id where u.email='student.dev@nova.example') as linked_student,(select count(*)::int from users where password_hash is not null and password_hash not like 'scrypt$131072$8$1$%') as invalid_hashes`);assert.equal(r.rows[0].migrations,readMigrationFiles({migrationsFolder:'./drizzle'}).length);assert.equal(r.rows[0].development_users,3);assert.equal(r.rows[0].linked_faculty,1);assert.equal(r.rows[0].linked_student,1);assert.equal(r.rows[0].invalid_hashes,0);console.log('PASS development seed preserved all user rows; 3 development accounts, faculty/student links, password format and migration journal verified.')}
+main().catch(e=>{console.error(e instanceof Error?e.message:'Database verification failed');process.exitCode=1})

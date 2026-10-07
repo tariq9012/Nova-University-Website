@@ -1,0 +1,17 @@
+insert into users(id,email) values ('10000000-0000-4000-8000-000000000001','fixture@example.test');
+insert into student_profiles(id,user_id) values ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001');
+insert into schools(id,name,slug) values ('30000000-0000-4000-8000-000000000001','Test','test');
+insert into departments(id,school_id,name,slug) values ('40000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','Test','test');
+insert into courses(id,department_id,code,slug,title,credit_hours,course_level,course_type) values ('50000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001','TEST','test','Test',3,1,'core');
+insert into semesters(id,code,academic_year,term,starts_on,ends_on) values ('60000000-0000-4000-8000-000000000001','TEST','2026','Test','2026-01-01','2026-12-31');
+insert into course_sections(id,course_id,semester_id,code,capacity) values ('70000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001','A',10),('70000000-0000-4000-8000-000000000002','50000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001','B',10);
+insert into enrollments(id,student_id,section_id,course_id,semester_id,credits) values ('80000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001',3);
+insert into class_sessions(id,section_id,starts_at,ends_at) values ('90000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','2026-01-05T09:00Z','2026-01-05T10:00Z'),('90000000-0000-4000-8000-000000000002','70000000-0000-4000-8000-000000000002','2026-01-05T09:00Z','2026-01-05T10:00Z');
+insert into attendance(enrollment_id,session_id,section_id,status) values ('80000000-0000-4000-8000-000000000001','90000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','present');
+insert into assignments(id,section_id,title,instructions,due_at,max_marks) values ('a0000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','A','Test','2026-12-01',20),('a0000000-0000-4000-8000-000000000002','70000000-0000-4000-8000-000000000002','B','Test','2026-12-01',20);
+insert into assignment_submissions(assignment_id,enrollment_id,section_id,content) values ('a0000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','Test');
+insert into grading_policies(id,name,repeat_policy,description) values ('b0000000-0000-4000-8000-000000000001','QA','all','QA');
+insert into grade_scale(id,policy_id,code,points,counts_for_gpa,earns_credit) values ('c0000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000001','A',4,true,true);
+insert into grades(enrollment_id,scale_id) values ('80000000-0000-4000-8000-000000000001','c0000000-0000-4000-8000-000000000001');
+insert into student_invoices(student_id,reference,currency,due_on) values ('20000000-0000-4000-8000-000000000001','QA','PKR','2026-12-01');
+insert into user_notifications(user_id,title,message,dedupe_key) values ('10000000-0000-4000-8000-000000000001','Test','Test','qa');

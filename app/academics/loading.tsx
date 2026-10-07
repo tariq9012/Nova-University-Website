@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="shell page-content" role="status"><p className="eyebrow">Academics</p><h1>Loading academic information…</h1><div className="academic-skeleton" aria-hidden="true"/></main>}
